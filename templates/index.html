@@ -5,42 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IQBAL_VIDEO_DOWNLOADER</title>
     <style>
-        body { 
-            background: #050a14; 
-            background-image: radial-gradient(circle at top right, #001f3f, #050a14), 
+        body {
+            background: #050a14;
+            background-image: radial-gradient(circle at top right, #001f3f, #050a14),
                               radial-gradient(circle at bottom left, #1a0a00, #050a14);
-            color: white; font-family: 'Segoe UI', sans-serif; 
+            color: white; font-family: 'Segoe UI', sans-serif;
             display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0;
+            padding: 20px 0; box-sizing: border-box;
         }
-        .container { 
-            width: 100%; max-width: 400px; 
-            background: rgba(12, 17, 28, 0.7); 
-            border: 1px solid #00f2ff; 
-            border-radius: 20px; padding: 25px; 
+        .container {
+            width: 100%; max-width: 400px;
+            background: rgba(12, 17, 28, 0.7);
+            border: 1px solid #00f2ff;
+            border-radius: 20px; padding: 25px;
             box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
             text-align: center;
         }
         h1 { color: #ff9500; font-size: 22px; text-shadow: 0 0 15px #ff9500; margin-bottom: 5px; }
         .version { color: #00f2ff; font-size: 13px; margin-bottom: 20px; font-weight: bold; }
-        
-        .input-box { 
-            background: #000; border: 1px solid #00f2ff; 
-            padding: 15px; border-radius: 10px; margin-bottom: 20px;
+        .input-box {
+            background: #000; border: 1px solid #00f2ff;
+            padding: 15px; border-radius: 10px; margin-bottom: 15px;
             box-shadow: inset 0 0 10px rgba(0, 242, 255, 0.2);
         }
-        input { background: none; border: none; color: #00f2ff; width: 100%; outline: none; font-size: 16px; }
-
-        .btn-neon { 
-            background: transparent; border: 1px solid #00f2ff; 
-            padding: 12px; border-radius: 10px; color: #00f2ff; 
+        input[type=text] { background: none; border: none; color: #00f2ff; width: 100%; outline: none; font-size: 16px; box-sizing: border-box; }
+        .btn-neon {
+            background: transparent; border: 1px solid #00f2ff;
+            padding: 12px; border-radius: 10px; color: #00f2ff;
             font-weight: bold; cursor: pointer; margin-bottom: 10px; width: 100%;
             text-shadow: 0 0 5px #00f2ff; box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
-            transition: 0.4s;
+            transition: 0.4s; font-size: 14px;
         }
         .btn-neon:hover { background: #00f2ff; color: #000; box-shadow: 0 0 20px #00f2ff; }
-        
-        .creator-tag { 
-            color: #ff9500; font-size: 14px; margin-top: 20px; 
+        .btn-neon:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-orange { border-color: #ff9500; color: #ff9500; text-shadow: 0 0 5px #ff9500; box-shadow: 0 0 10px rgba(255,149,0,0.2); }
+        .btn-orange:hover { background: #ff9500; color: #000; box-shadow: 0 0 20px #ff9500; }
+        #status { min-height: 20px; font-size: 13px; color: #00f2ff; margin: 10px 0; word-break: break-word; }
+        #status.error { color: #ff4d4d; }
+        #status.success { color: #4dff88; }
+        #aiResult {
+            display: none; text-align: left; background: #000;
+            border: 1px solid #ff9500; border-radius: 10px; padding: 12px;
+            font-size: 13px; margin-top: 10px; white-space: pre-wrap; color: #eee;
+        }
+        .upload-box { margin-bottom: 15px; }
+        #imagePreview { display: none; max-width: 100%; border-radius: 10px; margin-top: 10px; }
+        .creator-tag {
+            color: #ff9500; font-size: 14px; margin-top: 20px;
             padding-top: 10px; border-top: 1px solid #30363d;
             font-weight: bold; letter-spacing: 1px;
         }
@@ -49,17 +60,89 @@
 <body>
     <div class="container">
         <h1>IQBAL_VIDEO_DOWNLOADER</h1>
-        <div class="version">Ver: 0.16</div>
+        <div class="version">Ver: 0.17</div>
         <div class="input-box">
-            <input type="text" placeholder="Paste your link here...">
+            <input type="text" id="videoUrl" placeholder="Paste your link here...">
         </div>
-        <button class="btn-neon">DOWNLOAD MEDIA</button>
-        <button class="btn-neon">MP4 VIDEO</button>
-        <button class="btn-neon">MP3 AUDIO</button>
-        <button class="btn-neon">YOUTUBE</button>
-        <button class="btn-neon">FACEBOOK</button>
-        <button class="btn-neon">TIKTOK</button>
+        <button class="btn-neon" id="downloadBtn">DOWNLOAD MEDIA</button>
+        <div id="status"></div>
+        <div class="upload-box">
+            <input type="file" id="imageInput" accept="image/*" style="display:none">
+            <button class="btn-orange btn-neon" id="chooseImgBtn">📷 UPLOAD IMAGE</button>
+            <img id="imagePreview" alt="preview">
+        </div>
+        <button class="btn-orange btn-neon" id="generateBtn">✨ GENERATE CAPTION & HASHTAGS</button>
+        <div id="aiResult"></div>
         <div class="creator-tag">Ai Creator : Iqbal Ahmed</div>
     </div>
+<script>
+const statusEl = document.getElementById('status');
+const urlInput = document.getElementById('videoUrl');
+const downloadBtn = document.getElementById('downloadBtn');
+
+function setStatus(msg, type) {
+    statusEl.textContent = msg;
+    statusEl.className = type || '';
+}
+
+downloadBtn.onclick = async () => {
+    const url = urlInput.value.trim();
+    if (!url) { setStatus('একটা লিংক পেস্ট করুন।', 'error'); return; }
+    downloadBtn.disabled = true;
+    setStatus('ডাউনলোড হচ্ছে... অপেক্ষা করুন।');
+    try {
+        const res = await fetch('/download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            setStatus('✅ ' + data.message + ' (' + data.filename + ')', 'success');
+        } else {
+            setStatus('❌ ' + (data.message || 'ডাউনলোড ব্যর্থ হয়েছে।'), 'error');
+        }
+    } catch (err) {
+        setStatus('❌ সার্ভারের সাথে সংযোগ করা যায়নি: ' + err.message, 'error');
+    } finally {
+        downloadBtn.disabled = false;
+    }
+};
+
+const imageInput = document.getElementById('imageInput');
+const chooseImgBtn = document.getElementById('chooseImgBtn');
+const imagePreview = document.getElementById('imagePreview');
+const generateBtn = document.getElementById('generateBtn');
+const aiResult = document.getElementById('aiResult');
+
+chooseImgBtn.onclick = () => imageInput.click();
+
+imageInput.onchange = () => {
+    const f = imageInput.files[0];
+    if (!f) return;
+    imagePreview.src = URL.createObjectURL(f);
+    imagePreview.style.display = 'block';
+    chooseImgBtn.textContent = '📷 ' + f.name;
+};
+
+generateBtn.onclick = async () => {
+    generateBtn.disabled = true;
+    aiResult.style.display = 'block';
+    aiResult.textContent = 'ক্যাপশন তৈরি হচ্ছে...';
+    try {
+        const res = await fetch('/generate-ai', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            aiResult.textContent = data.result;
+        } else {
+            aiResult.textContent = '❌ ' + (data.message || 'জেনারেট করা যায়নি।');
+        }
+    } catch (err) {
+        aiResult.textContent = '❌ সার্ভারের সাথে সংযোগ করা যায়নি: ' + err.message;
+    } finally {
+        generateBtn.disabled = false;
+    }
+};
+</script>
 </body>
 </html>
